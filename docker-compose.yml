@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # Apiman Gateway
+  apiman-gateway:
+    image: apiman/on-wildfly:latest
+    container_name: apiman-gateway
+    ports:
+      - "8080:8080"
+      - "9990:9990"
+    environment:
+      - APIMAN_GATEWAY_ENDPOINT=http://localhost:8080/apiman-gateway
+      - APIMAN_GATEWAY_USERNAME=admin
+      - APIMAN_GATEWAY_PASSWORD=admin123
+    volumes:
+      - ./apiman-data:/opt/jboss/wildfly/standalone/data
+    networks:
+      - apiman-network
+
+  # Apiman Manager UI
+  apiman-manager:
+    image: apiman/on-wildfly:latest
+    container_name: apiman-manager
+    ports:
+      - "8081:8080"
+    environment:
+      - APIMAN_MANAGER_ENDPOINT=http://localhost:8081/apiman
+      - APIMAN_GATEWAY_ENDPOINT=http://apiman-gateway:8080/apiman-gateway
+    depends_on:
+      - apiman-gateway
+    networks:
+      - apiman-network
+
+  # PostgreSQL Database for Apiman
+  apiman-db:
+    image: postgres:13
+    container_name: apiman-db
+    environment:
+      - POSTGRES_DB=apiman
+      - POSTGRES_USER=apiman
+      - POSTGRES_PASSWORD=apiman123
+    volumes:
+      - apiman-db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - apiman-network
+
+  # Your Backend API (Mock Twitter API)
+  twitter-api:
+    image: node:18-alpine
+    container_name: twitter-api
+    working_dir: /app
+    volumes:
+      - ./mock-backend:/app
+    ports:
+      - "3001:3001"
+    command: npm start
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+    networks:
+      - apiman-network
+
+networks:
+  apiman-network:
+    driver: bridge
+
+volumes:
+  apiman-db-data:
+  apiman-data:
